@@ -8,6 +8,8 @@ import requests
 import socket
 import sys
 import time
+import crc16
+
 
 from PyInquirer import prompt
 
@@ -38,7 +40,7 @@ def main():
 		'Wialon Hosting USA': '64.120.108.24',
 		'Wialon Hosting TRACE': '193.193.165.166',
 		'Wialon Hosting TIG': '185.213.1.24',
-		'Wialon Hosting OLD': '77.74.50.78',
+		'Wialon Intelligis': '52.57.1.136',
 		'Specify custom': 'Custom'
 	}
 
@@ -92,9 +94,9 @@ def main():
 				LAST_CUSTOM_ENDPOINT = SETTINGS['endpoint']
 		else:
 			SETTINGS['endpoint'] = endpoint
-		
+
 		# ASKING PORT
-		SETTINGS['port'] = int(prompt(dict(message='Port', type='input', default='20332', name='port'))['port'])
+		SETTINGS['port'] = int(prompt(dict(message='Port', type='input', default='47768', name='port'))['port'])
 
 		# ASKING INTERVAL
 		SETTINGS['interval'] = prompt(dict(message='Interval(seconds)', type='input', default='5', name='ival'))['ival']
@@ -106,7 +108,7 @@ def main():
 		SETTINGS['uid'] = prompt(uid_q)['uid']
 		if len(SETTINGS['uid']):
 			LAST_UID = SETTINGS['uid']
-		
+
 		# ASKING SRC
 		SETTINGS['track_src_type'] = prompt(dict(message='Track source type', type='list', choices=['URL', 'File'], name='track_src_type'))['track_src_type']
 		src_q = dict(name='src', type='input')
@@ -167,7 +169,7 @@ def main():
 				new_config['last_src_path'] = LAST_SRC_PATH
 			if LAST_SRC_URL:
 				new_config['last_src_url'] = LAST_SRC_URL
-			
+
 			new_presets = None
 			if LAST_PRESETS:
 				new_presets = LAST_PRESETS
@@ -178,7 +180,7 @@ def main():
 					if len(preset_name):
 						new_presets = new_presets or dict()
 						new_presets[preset_name] = SETTINGS
-			
+
 			if new_presets:
 				new_config["presets"] = new_presets
 
@@ -197,9 +199,15 @@ def main():
 	msgs = [parse_line(line) for line in TRACK_DATA]
 
 	if PROTOCOL == 'TCP':
-		LOGIN_MESSAGE = b'#L#'
-		LOGIN_MESSAGE = b''.join([LOGIN_MESSAGE, bytearray(UID, 'utf-8')])
-		LOGIN_MESSAGE = b''.join([LOGIN_MESSAGE, b';NA\r\n'])
+		LOGIN_MESSAGE = b'#L#2.0'
+		LOGIN_MESSAGE = b';'.join([LOGIN_MESSAGE, bytearray(UID, 'utf-8')])
+		LOGIN_MESSAGE = b';'.join([LOGIN_MESSAGE, b'passwd1'])
+		tmp = crc16.crc16xmodem(LOGIN_MESSAGE)
+		d = hex(tmp)[2:]
+		d = d.upper()
+		crc_str = b''.join(bytearray(F"{ord(x):X}",'utf-8') for x in d)
+		LOGIN_MESSAGE = b';'.join([LOGIN_MESSAGE, crc_str])
+		LOGIN_MESSAGE = b''.join([LOGIN_MESSAGE, b'\r\n'])
 
 		s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 		s.connect((ENDPOINT, PORT))
