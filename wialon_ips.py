@@ -47,6 +47,7 @@ def main():
 	LAST_PRESETS = None
 	LAST_CUSTOM_ENDPOINT = None
 	LAST_UID = None
+	LAST_PSWD = None
 	LAST_SRC_URL = None
 	LAST_SRC_PATH = None
 
@@ -57,6 +58,9 @@ def main():
 			conf = json.load(cf)
 			if 'last_uid' in conf:
 				LAST_UID = conf['last_uid']
+			if 'last_pswd' in conf:
+				LAST_PSWD = conf['last_pswd']
+
 			if 'last_src_url' in conf:
 				LAST_SRC_URL = conf['last_src_url']
 			if 'last_src_path' in conf:
@@ -109,6 +113,14 @@ def main():
 		if len(SETTINGS['uid']):
 			LAST_UID = SETTINGS['uid']
 
+		# ASKING PSWD
+		pswd_q = dict(message='PASSWORD', type='input', name='pswd')
+		if LAST_PSWD:
+			pswd_q['default'] = LAST_PSWD
+		SETTINGS['pswd'] = prompt(pswd_q)['pswd']
+		if len(SETTINGS['pswd']):
+			LAST_PSWD = SETTINGS['pswd']
+
 		# ASKING SRC
 		SETTINGS['track_src_type'] = prompt(dict(message='Track source type', type='list', choices=['URL', 'File'], name='track_src_type'))['track_src_type']
 		src_q = dict(name='src', type='input')
@@ -134,6 +146,7 @@ def main():
 		ENDPOINT = SETTINGS['endpoint']
 		PORT = SETTINGS['port']
 		UID = SETTINGS['uid']
+		PASSWORD = SETTINGS['pswd']
 		INTERVAL = SETTINGS['interval']
 		TRACK_SRC_TYPE = SETTINGS['track_src_type']
 		TRACK_SRC = SETTINGS['track_src']
@@ -163,6 +176,8 @@ def main():
 			new_config = dict()
 			if LAST_UID:
 				new_config['last_uid'] = LAST_UID
+			if LAST_PSWD:
+				new_config['last_pswd'] = LAST_PSWD
 			if LAST_CUSTOM_ENDPOINT:
 				new_config['last_custom_endpoint'] = LAST_CUSTOM_ENDPOINT
 			if LAST_SRC_PATH:
@@ -199,15 +214,15 @@ def main():
 	msgs = [parse_line(line) for line in TRACK_DATA]
 
 	if PROTOCOL == 'TCP':
-		LOGIN_MESSAGE = b'#L#2.0'
-		LOGIN_MESSAGE = b';'.join([LOGIN_MESSAGE, bytearray(UID, 'utf-8')])
-		LOGIN_MESSAGE = b';'.join([LOGIN_MESSAGE, b'passwd1'])
-		tmp = crc16.crc16xmodem(LOGIN_MESSAGE)
+		PACKET_TYPE = b'#L#'
+		PACKET_DATA = b'2.0'
+		PACKET_DATA = b';'.join([PACKET_DATA, bytearray(UID, 'utf-8')])
+		PACKET_DATA = b';'.join([PACKET_DATA, bytearray(PASSWORD, 'utf-8'), b''])
+		tmp = crc16.crc16xmodem(PACKET_DATA)
 		d = hex(tmp)[2:]
 		d = d.upper()
 		crc_str = b''.join(bytearray(F"{ord(x):X}",'utf-8') for x in d)
-		LOGIN_MESSAGE = b';'.join([LOGIN_MESSAGE, crc_str])
-		LOGIN_MESSAGE = b''.join([LOGIN_MESSAGE, b'\r\n'])
+		LOGIN_MESSAGE = b''.join([PACKET_TYPE, PACKET_DATA, crc_str, b'\r\n'])
 
 		s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 		s.connect((ENDPOINT, PORT))
