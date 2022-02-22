@@ -41,6 +41,7 @@ def main():
 		'Wialon Hosting TRACE': '193.193.165.166',
 		'Wialon Hosting TIG': '185.213.1.24',
 		'Wialon Intelligis': '52.57.1.136',
+		'Wialon US': '13.52.37.2',
 		'Specify custom': 'Custom'
 	}
 
